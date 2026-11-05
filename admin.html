@@ -1,130 +1,328 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Painel de edição</title>
+<title>Painel Administrativo</title>
+
 <style>
-*{box-sizing:border-box}
-body{margin:0;padding:20px;background:#fff0f4;color:#67283d;font-family:Arial}
-main{max-width:600px;margin:auto}
-section{background:white;padding:20px;border-radius:18px;margin:15px 0}
-input,textarea{width:100%;padding:12px;margin:7px 0 14px;border:1px solid #e5b8c5;border-radius:9px;font:inherit}
-textarea{min-height:90px}
-button{padding:13px;border:0;border-radius:10px;background:#d94f7b;color:white;font-weight:bold;margin:5px 0}
-.photo{border:1px solid #f0c5d1;padding:12px;border-radius:12px;margin:12px 0}
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 20px;
+  background: #fff0f4;
+  color: #663044;
+  font-family: Arial, sans-serif;
+}
+
+main {
+  max-width: 600px;
+  margin: auto;
+}
+
+h1, h2 {
+  text-align: center;
+}
+
+.card {
+  background: white;
+  padding: 20px;
+  margin: 18px 0;
+  border-radius: 18px;
+  box-shadow: 0 5px 20px #8b34501c;
+}
+
+label {
+  display: block;
+  margin-top: 15px;
+  font-weight: bold;
+}
+
+input, textarea {
+  width: 100%;
+  padding: 12px;
+  margin-top: 7px;
+  border: 1px solid #e5b5c5;
+  border-radius: 10px;
+  font-size: 15px;
+}
+
+textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+button {
+  width: 100%;
+  padding: 13px;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 12px;
+  background: #d94f7b;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.remove {
+  background: #777;
+}
+
+.photo-card {
+  background: #fff7fa;
+  padding: 15px;
+  margin: 15px 0;
+  border: 1px solid #f0c9d5;
+  border-radius: 14px;
+}
+
+.status {
+  text-align: center;
+  font-weight: bold;
+  overflow-wrap: anywhere;
+}
 </style>
 </head>
+
 <body>
+
 <main>
-<h1>Painel do nosso site</h1>
-<p>Edite as lembranças e salve as alterações.</p>
 
-<section>
+<h1>Painel Administrativo</h1>
+<p class="status">Edite as informações do seu site ❤️</p>
+
+<section class="card">
+
 <h2>Informações principais</h2>
-<label>Título</label>
-<input id="title" placeholder="Um mês de nós">
 
-<label>Data e hora de início</label>
-<input id="startDate" type="datetime-local">
+<label>Título do site</label>
+<input id="title" placeholder="Ex: Um mês de nós">
 
 <label>Mensagem inicial</label>
-<textarea id="intro"></textarea>
+<textarea id="intro" placeholder="Escreva uma mensagem..."></textarea>
 
-<label>Música (link de áudio)</label>
-<input id="music" placeholder="Link da música">
+<label>Data de início</label>
+<input id="startDate" type="datetime-local">
+
 </section>
 
-<section>
-<h2>Nossas lembranças</h2>
+<section class="card">
+
+<h2>Nossas fotos</h2>
+
+<p>Edite o título, a data e a história de cada lembrança.</p>
+
 <div id="photos"></div>
-<button onclick="addPhoto()">+ Adicionar foto</button>
+
+<button type="button" id="addButton">
++ Adicionar outra foto
+</button>
+
 </section>
 
-<section>
-<button onclick="save()" style="width:100%">SALVAR ALTERAÇÕES</button>
-<p id="status"></p>
+<section class="card">
+
+<button type="button" id="saveButton">
+SALVAR ALTERAÇÕES
+</button>
+
+<p id="status" class="status"></p>
+
 </section>
+
 </main>
 
 <script type="module">
+
 import {
- db, doc, getDoc, setDoc
+  db,
+  doc,
+  getDoc,
+  setDoc
 } from "./firebase.js";
 
-const photos = document.getElementById("photos");
+const photoDefaults = [
+  {
+    image: "fotos/0d171776-52c7-459d-b5cc-fc70e946272f.jpeg",
+    name: "",
+    date: "",
+    story: ""
+  },
+  {
+    image: "fotos/CDCBB916-F070-4EC8-89F6-167D5B1F0C15_BA3D15B9-6063-451A-B425-406ADCF6907A.jpeg",
+    name: "",
+    date: "",
+    story: ""
+  },
+  {
+    image: "fotos/IMG_6586.jpeg",
+    name: "",
+    date: "",
+    story: ""
+  },
+  {
+    image: "fotos/IMG_6593.jpeg",
+    name: "",
+    date: "",
+    story: ""
+  }
+];
 
-function addPhoto(data={}) {
- const div=document.createElement("div");
- div.className="photo";
+let photos = [];
 
- const fields=[
-  ["Foto (link da imagem)","image"],
-  ["Título da lembrança","name"],
-  ["Data da lembrança","date"],
-  ["História dessa foto","story"]
- ];
+const $ = (id) => document.getElementById(id);
 
- fields.forEach(([label,key])=>{
-  const l=document.createElement("label");
-  l.textContent=label;
-  const input=key==="story"
-   ?document.createElement("textarea")
-   :document.createElement("input");
-  input.dataset.key=key;
-  input.value=data[key]||"";
-  div.append(l,input);
- });
+function createPhotoCard(photo, index) {
 
- const del=document.createElement("button");
- del.textContent="Excluir lembrança";
- del.onclick=()=>div.remove();
- div.append(del);
- photos.append(div);
+  const div = document.createElement("div");
+  div.className = "photo-card";
+
+  div.innerHTML = `
+    <h3>Foto ${index + 1}</h3>
+
+    <label>Caminho da imagem</label>
+    <input class="image" value="${escapeValue(photo.image || "")}">
+
+    <label>Título da lembrança</label>
+    <input class="name" placeholder="Ex: Nosso primeiro encontro"
+      value="${escapeValue(photo.name || "")}">
+
+    <label>Data da lembrança</label>
+    <input class="date" placeholder="Ex: 04/10/2026"
+      value="${escapeValue(photo.date || "")}">
+
+    <label>História dessa foto</label>
+    <textarea class="story"
+      placeholder="Conte o que aconteceu nesse dia...">${escapeValue(photo.story || "")}</textarea>
+
+    <button type="button" class="remove">Remover foto</button>
+  `;
+
+  div.querySelector(".remove").addEventListener("click", () => {
+    div.remove();
+    renumberPhotos();
+  });
+
+  $("photos").appendChild(div);
 }
 
-async function load(){
- try{
-  const snap=await getDoc(doc(db,"site","config"));
-  if(!snap.exists())return;
-  const d=snap.data();
-  document.getElementById("title").value=d.title||"";
-  document.getElementById("startDate").value=d.startDate||"";
-  document.getElementById("intro").value=d.intro||"";
-  document.getElementById("music").value=d.music||"";
-  (d.photos||[]).forEach(addPhoto);
- }catch(e){
-  document.getElementById("status").textContent="Erro ao carregar: "+e.message;
- }
+function escapeValue(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }
 
-window.addPhoto=addPhoto;
+function renumberPhotos() {
+  [...$("photos").children].forEach((card, index) => {
+    card.querySelector("h3").textContent = "Foto " + (index + 1);
+  });
+}
 
-window.save=async()=>{
- const status=document.getElementById("status");
- status.textContent="Salvando...";
- try{
-  const data={
-   title:document.getElementById("title").value,
-   startDate:document.getElementById("startDate").value,
-   intro:document.getElementById("intro").value,
-   music:document.getElementById("music").value,
-   photos:[...photos.querySelectorAll(".photo")].map(div=>{
-    const item={};
-    div.querySelectorAll("[data-key]").forEach(el=>{
-     item[el.dataset.key]=el.value;
-    });
-    return item;
-   })
+function readPhotos() {
+
+  return [...$("photos").children].map(card => ({
+    image: card.querySelector(".image").value.trim(),
+    name: card.querySelector(".name").value.trim(),
+    date: card.querySelector(".date").value.trim(),
+    story: card.querySelector(".story").value.trim()
+  })).filter(photo => photo.image);
+}
+
+async function load() {
+
+  $("status").textContent = "Carregando informações...";
+
+  try {
+
+    const reference = doc(db, "site", "config");
+    const result = await getDoc(reference);
+
+    if (result.exists()) {
+
+      const data = result.data();
+
+      $("title").value = data.title || "";
+      $("intro").value = data.intro || "";
+      $("startDate").value = data.startDate || "";
+
+      photos = Array.isArray(data.photos)
+        ? data.photos
+        : [];
+
+    } else {
+
+      $("title").value = "Um mês de nós";
+      $("intro").value =
+        "Algumas pessoas chegam e deixam tudo mais bonito.";
+
+      $("startDate").value = "2026-10-04T00:00";
+
+      photos = photoDefaults;
+    }
+
+    $("photos").innerHTML = "";
+
+    photos.forEach(createPhotoCard);
+
+    $("status").textContent = "Painel carregado!";
+
+  } catch (error) {
+
+    console.error(error);
+
+    $("status").textContent =
+      "Erro ao carregar. Confira o Firebase.";
+  }
+}
+
+$("addButton").addEventListener("click", () => {
+
+  createPhotoCard({
+    image: "",
+    name: "",
+    date: "",
+    story: ""
+  }, $("photos").children.length);
+
+  renumberPhotos();
+});
+
+$("saveButton").addEventListener("click", async () => {
+
+  $("status").textContent = "Salvando...";
+
+  const data = {
+    title: $("title").value.trim(),
+    intro: $("intro").value.trim(),
+    startDate: $("startDate").value,
+    photos: readPhotos()
   };
-  await setDoc(doc(db,"site","config"),data);
-  status.textContent="Alterações salvas com sucesso!";
- }catch(e){
-  status.textContent="Erro ao salvar: "+e.message;
- }
-};
+
+  try {
+
+    await setDoc(doc(db, "site", "config"), data);
+
+    $("status").textContent =
+      "Alterações salvas com sucesso! ❤️";
+
+  } catch (error) {
+
+    console.error(error);
+
+    $("status").textContent =
+      "Não foi possível salvar. Verifique as regras do Firebase.";
+  }
+});
 
 load();
+
 </script>
+
 </body>
 </html>

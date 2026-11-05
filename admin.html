@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel de edição</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:#fff0f4;color:#67283d;font-family:Arial}
+main{max-width:600px;margin:auto}
+section{background:white;padding:20px;border-radius:18px;margin:15px 0}
+input,textarea{width:100%;padding:12px;margin:7px 0 14px;border:1px solid #e5b8c5;border-radius:9px;font:inherit}
+textarea{min-height:90px}
+button{padding:13px;border:0;border-radius:10px;background:#d94f7b;color:white;font-weight:bold;margin:5px 0}
+.photo{border:1px solid #f0c5d1;padding:12px;border-radius:12px;margin:12px 0}
+</style>
+</head>
+<body>
+<main>
+<h1>Painel do nosso site</h1>
+<p>Edite as lembranças e salve as alterações.</p>
+
+<section>
+<h2>Informações principais</h2>
+<label>Título</label>
+<input id="title" placeholder="Um mês de nós">
+
+<label>Data e hora de início</label>
+<input id="startDate" type="datetime-local">
+
+<label>Mensagem inicial</label>
+<textarea id="intro"></textarea>
+
+<label>Música (link de áudio)</label>
+<input id="music" placeholder="Link da música">
+</section>
+
+<section>
+<h2>Nossas lembranças</h2>
+<div id="photos"></div>
+<button onclick="addPhoto()">+ Adicionar foto</button>
+</section>
+
+<section>
+<button onclick="save()" style="width:100%">SALVAR ALTERAÇÕES</button>
+<p id="status"></p>
+</section>
+</main>
+
+<script type="module">
+import {
+ db, doc, getDoc, setDoc
+} from "./firebase.js";
+
+const photos = document.getElementById("photos");
+
+function addPhoto(data={}) {
+ const div=document.createElement("div");
+ div.className="photo";
+
+ const fields=[
+  ["Foto (link da imagem)","image"],
+  ["Título da lembrança","name"],
+  ["Data da lembrança","date"],
+  ["História dessa foto","story"]
+ ];
+
+ fields.forEach(([label,key])=>{
+  const l=document.createElement("label");
+  l.textContent=label;
+  const input=key==="story"
+   ?document.createElement("textarea")
+   :document.createElement("input");
+  input.dataset.key=key;
+  input.value=data[key]||"";
+  div.append(l,input);
+ });
+
+ const del=document.createElement("button");
+ del.textContent="Excluir lembrança";
+ del.onclick=()=>div.remove();
+ div.append(del);
+ photos.append(div);
+}
+
+async function load(){
+ try{
+  const snap=await getDoc(doc(db,"site","config"));
+  if(!snap.exists())return;
+  const d=snap.data();
+  document.getElementById("title").value=d.title||"";
+  document.getElementById("startDate").value=d.startDate||"";
+  document.getElementById("intro").value=d.intro||"";
+  document.getElementById("music").value=d.music||"";
+  (d.photos||[]).forEach(addPhoto);
+ }catch(e){
+  document.getElementById("status").textContent="Erro ao carregar: "+e.message;
+ }
+}
+
+window.addPhoto=addPhoto;
+
+window.save=async()=>{
+ const status=document.getElementById("status");
+ status.textContent="Salvando...";
+ try{
+  const data={
+   title:document.getElementById("title").value,
+   startDate:document.getElementById("startDate").value,
+   intro:document.getElementById("intro").value,
+   music:document.getElementById("music").value,
+   photos:[...photos.querySelectorAll(".photo")].map(div=>{
+    const item={};
+    div.querySelectorAll("[data-key]").forEach(el=>{
+     item[el.dataset.key]=el.value;
+    });
+    return item;
+   })
+  };
+  await setDoc(doc(db,"site","config"),data);
+  status.textContent="Alterações salvas com sucesso!";
+ }catch(e){
+  status.textContent="Erro ao salvar: "+e.message;
+ }
+};
+
+load();
+</script>
+</body>
+</html>
